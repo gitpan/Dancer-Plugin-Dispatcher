@@ -5,8 +5,9 @@ Makefile.PL
 README
 dist.ini
 lib/Dancer/Plugin/Dispatcher.pm
-logs/development.log
 t/01-load.t
 t/02-test.t
+t/03-auto.t
 t/lib/MyApp.pm
+t/lib/MyAppAuto.pm
 t/logs/development.log

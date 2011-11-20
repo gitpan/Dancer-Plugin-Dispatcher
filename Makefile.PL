@@ -9,23 +9,23 @@ use ExtUtils::MakeMaker 6.30;
 
 
 my %WriteMakefileArgs = (
-  'ABSTRACT' => 'Simple yet Powerful Controller Class dispatcher for Dancer',
-  'AUTHOR' => 'Al Newkirk <awncorp@cpan.org>',
-  'BUILD_REQUIRES' => {},
-  'CONFIGURE_REQUIRES' => {
-    'ExtUtils::MakeMaker' => '6.30'
+  "ABSTRACT" => "Simple yet Powerful Controller Class dispatcher for Dancer",
+  "AUTHOR" => "Al Newkirk <awncorp\@cpan.org>",
+  "BUILD_REQUIRES" => {},
+  "CONFIGURE_REQUIRES" => {
+    "ExtUtils::MakeMaker" => "6.30"
   },
-  'DISTNAME' => 'Dancer-Plugin-Dispatcher',
-  'EXE_FILES' => [],
-  'LICENSE' => 'perl',
-  'NAME' => 'Dancer::Plugin::Dispatcher',
-  'PREREQ_PM' => {
-    'Dancer' => '0',
-    'Module::Find' => '0'
+  "DISTNAME" => "Dancer-Plugin-Dispatcher",
+  "EXE_FILES" => [],
+  "LICENSE" => "perl",
+  "NAME" => "Dancer::Plugin::Dispatcher",
+  "PREREQ_PM" => {
+    "Dancer" => 0,
+    "Module::Find" => 0
   },
-  'VERSION' => '0.112610',
-  'test' => {
-    'TESTS' => 't/*.t'
+  "VERSION" => "0.113240",
+  "test" => {
+    "TESTS" => "t/*.t"
   }
 );
 

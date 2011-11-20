@@ -1,7 +1,8 @@
 # ABSTRACT: Simple yet Powerful Controller Class dispatcher for Dancer
 
 package Dancer::Plugin::Dispatcher;
-our $VERSION = '0.112610'; # VERSION
+
+our $VERSION = '0.113240'; # VERSION
 
 
 use strict;
@@ -11,6 +12,8 @@ use Dancer::Plugin;
 use Module::Find;
 
 our $CONTROLLERS ;
+
+# automation ... sorta
 
 sub dispatcher {
     our $cfg   = plugin_setting;
@@ -88,7 +91,21 @@ sub dispatcher {
     return $code;
 }
 
+sub auto_dispatcher {
+    our $cfg   = plugin_setting;
+    foreach my $route (@{$cfg->{routes}}) {
+        my $re = qr/([a-z]+) *([^\s>]+) *> *(.*)/;
+        my ($m, $r, $s) = $route =~ $re;
+        if ($m && $r && $s) {
+            eval {
+                "$m(". $r .",". dispatcher split /\s/, $s .")"
+            };
+        }
+    }
+}
+
 register dispatch       => sub { dispatcher @_ };
+register dispatch_auto  => sub { auto_dispatcher @_ };
 register_plugin;
 
 1;
@@ -102,7 +119,7 @@ Dancer::Plugin::Dispatcher - Simple yet Powerful Controller Class dispatcher for
 
 =head1 VERSION
 
-version 0.112610
+version 0.113240
 
 =head1 SYNOPSIS
 
@@ -113,6 +130,14 @@ version 0.112610
     get '/login'     => dispatch '#login';
     get '/dashboard' => dispatch '#check_session', '#dashboard';
 
+    dance;
+    
+    # or alternatively, define routes in your config file
+
+    use Dancer;
+    use Dancer::Plugin::Dispatcher;
+
+    dispatch_auto;
     dance;
 
 =head1 DESCRIPTION
@@ -135,6 +160,19 @@ If no configuration information is given, this plugin will attempt to use the
 calling (or main) namespace to dispatch code from. If the base option is supplied
 with the configuration, this plugin will load that class and all sub classes for
 your convenience.
+
+Alternatively, you may can specify your routes and handlers in your L<Dancer>
+config file.
+
+For example: 
+
+    plugins:
+      Dispatcher:
+        base: MyApp::Controller
+        routes:
+          - "get / > #index"
+          - "get /login > #login"
+          - "get /dashboard > #check_session #dashboard"
 
 =head1 METHODS
 

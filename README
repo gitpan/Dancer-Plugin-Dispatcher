@@ -3,7 +3,7 @@ NAME
     dispatcher for Dancer
 
 VERSION
-    version 0.112610
+    version 0.113240
 
 SYNOPSIS
         use Dancer;
@@ -13,6 +13,14 @@ SYNOPSIS
         get '/login'     => dispatch '#login';
         get '/dashboard' => dispatch '#check_session', '#dashboard';
 
+        dance;
+        
+    # or alternatively, define routes in your config file
+
+        use Dancer;
+        use Dancer::Plugin::Dispatcher;
+
+        dispatch_auto;
         dance;
 
 DESCRIPTION
@@ -34,6 +42,19 @@ CONFIGURATION
     use the calling (or main) namespace to dispatch code from. If the base
     option is supplied with the configuration, this plugin will load that
     class and all sub classes for your convenience.
+
+    Alternatively, you may can specify your routes and handlers in your
+    Dancer config file.
+
+    For example:
+
+        plugins:
+          Dispatcher:
+            base: MyApp::Controller
+            routes:
+              - "get / > #index"
+              - "get /login > #login"
+              - "get /dashboard > #check_session #dashboard"
 
 METHODS
   dispatch
