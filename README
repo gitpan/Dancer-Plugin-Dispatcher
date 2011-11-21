@@ -3,7 +3,7 @@ NAME
     dispatcher for Dancer
 
 VERSION
-    version 0.113240
+    version 0.113250
 
 SYNOPSIS
         use Dancer;
@@ -20,7 +20,6 @@ SYNOPSIS
         use Dancer;
         use Dancer::Plugin::Dispatcher;
 
-        dispatch_auto;
         dance;
 
 DESCRIPTION

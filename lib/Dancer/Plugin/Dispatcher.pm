@@ -2,7 +2,7 @@
 
 package Dancer::Plugin::Dispatcher;
 
-our $VERSION = '0.113240'; # VERSION
+our $VERSION = '0.113250'; # VERSION
 
 
 use strict;
@@ -16,7 +16,9 @@ our $CONTROLLERS ;
 # automation ... sorta
 
 sub dispatcher {
-    our $cfg   = plugin_setting;
+    return unless config->{plugins};
+    
+    our $cfg   = config->{plugins}->{Dispatcher};
     our $base  = $cfg->{base};
     
     # check for a base class in the configuration
@@ -44,7 +46,6 @@ sub dispatcher {
         # format the shortcut
         my ($class, $action) = split /#/, $shortcut;
         if ($class) {
-            
             # run through the filters
             $class = ucfirst $class;
             $class =~ s/([a-z])\-([a-z])/$1::\u$2/gpi;
@@ -92,21 +93,29 @@ sub dispatcher {
 }
 
 sub auto_dispatcher {
-    our $cfg   = plugin_setting;
+    return unless config->{plugins};
+    
+    our $cfg = config->{plugins}->{Dispatcher};
     foreach my $route (@{$cfg->{routes}}) {
         my $re = qr/([a-z]+) *([^\s>]+) *> *(.*)/;
         my ($m, $r, $s) = $route =~ $re;
         if ($m && $r && $s) {
-            eval {
-                "$m(". $r .",". dispatcher split /\s/, $s .")"
-            };
+            my $c = dispatcher(split(/\s/, $s));
+            if ($m eq 'get') {
+                Dancer::App->current->registry->universal_add($_, $r, $c)
+                for ('get', 'head')
+            }
+            else {
+                Dancer::App->current->registry->universal_add($m, $r, $c)
+            }
         }
     }
 }
 
 register dispatch       => sub { dispatcher @_ };
-register dispatch_auto  => sub { auto_dispatcher @_ };
+
 register_plugin;
+auto_dispatcher;
 
 1;
 
@@ -119,7 +128,7 @@ Dancer::Plugin::Dispatcher - Simple yet Powerful Controller Class dispatcher for
 
 =head1 VERSION
 
-version 0.113240
+version 0.113250
 
 =head1 SYNOPSIS
 
@@ -137,7 +146,6 @@ version 0.113240
     use Dancer;
     use Dancer::Plugin::Dispatcher;
 
-    dispatch_auto;
     dance;
 
 =head1 DESCRIPTION

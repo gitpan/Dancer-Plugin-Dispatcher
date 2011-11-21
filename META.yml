@@ -15,4 +15,4 @@ name: Dancer-Plugin-Dispatcher
 requires:
   Dancer: 0
   Module::Find: 0
-version: 0.113240
+version: 0.113250
