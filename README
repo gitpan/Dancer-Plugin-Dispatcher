@@ -3,7 +3,7 @@ NAME
     dispatcher for Dancer
 
 VERSION
-    version 0.113310
+    version 0.1133101
 
 SYNOPSIS
         use Dancer;
@@ -24,14 +24,14 @@ SYNOPSIS
 
 DESCRIPTION
     This Dancer plugin provides a simple mechanism for dispatching code in
-    controller classes which allows you to better seperate and
+    controller classes which allows you to better separate and
     compartmentalize your Dancer application. This plugin is a great
     building block towards giving your Dancer application an MVC
     architecture.
 
 CONFIGURATION
     Configuration details will be optionally grabbed from your Dancer config
-    file. For example:
+    file although no configuration is neccessary. For example:
 
         plugins:
           Dispatcher:
@@ -52,9 +52,9 @@ CONFIGURATION
             base: MyApp::Controller
             routes:
               - "any / > #index"
-              - "get /login > #login"
-              - "get /dashboard > #check_session #dashboard"
-              - "get,post /form > #etc"
+              - "get /dashboard > #check_session,#dashboard"
+              - "get,post /login > #login"
+              - "get,post /logout > #logout"
 
 METHODS
   dispatch
@@ -63,7 +63,7 @@ METHODS
     coderef returned wraps that package and sub-routine to be executed by
     Dancer. The following is the shortcut translation map:
 
-        The '#' character is used to seperate the controller and action, same as
+        The '#' character is used to separate the controller and action, same as
         RoR and Mojolicious, e.g. (controller#action).
         
     dispatch '#index'; -> Dispatches main->index or MyApp::Controller->index
@@ -82,20 +82,20 @@ METHODS
     actions. The current method of chaining suggests that you create a
     catch-all* route which you then you to perform some actions then pass
     the request to the next matching route forcing you to use mega-splat and
-    reparse routes to find the next match.
+    re-parse routes to find the next match.
 
     Chaining actions with this plugin only requires you to supply multiple
-    shartcuts to the dispatch keyword:
+    shortcuts to the dispatch keyword:
 
         get '/secured' => dispatch '#chkdomain', '#chksession', '#secured';
         
     sub chkdomain {
-            return undef unless ! param(domain);
+            return undef if param(domain);
             return 'Chain broken, domain is missing!';
         }
         
     sub chksession {
-            return undef unless ! session('user');
+            return undef if session('user');
             return redirect '/'; # maybe flash session timed-out message
         }
         
