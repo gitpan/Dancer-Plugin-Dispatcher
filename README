@@ -3,7 +3,7 @@ NAME
     dispatcher for Dancer
 
 VERSION
-    version 0.113250
+    version 0.113310
 
 SYNOPSIS
         use Dancer;
@@ -18,7 +18,7 @@ SYNOPSIS
     # or alternatively, define routes in your config file
 
         use Dancer;
-        use Dancer::Plugin::Dispatcher;
+        use Dancer::Plugin::Dispatcher; # in your scripts
 
         dance;
 
@@ -51,9 +51,10 @@ CONFIGURATION
           Dispatcher:
             base: MyApp::Controller
             routes:
-              - "get / > #index"
+              - "any / > #index"
               - "get /login > #login"
               - "get /dashboard > #check_session #dashboard"
+              - "get,post /form > #etc"
 
 METHODS
   dispatch

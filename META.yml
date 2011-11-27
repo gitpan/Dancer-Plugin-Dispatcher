@@ -14,5 +14,4 @@ meta-spec:
 name: Dancer-Plugin-Dispatcher
 requires:
   Dancer: 0
-  Module::Find: 0
-version: 0.113250
+version: 0.113310

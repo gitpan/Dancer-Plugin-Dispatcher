@@ -2,14 +2,13 @@
 
 package Dancer::Plugin::Dispatcher;
 
-our $VERSION = '0.113250'; # VERSION
+our $VERSION = '0.113310'; # VERSION
 
 
 use strict;
 use warnings;
 use Dancer qw/:syntax/;
 use Dancer::Plugin;
-use Module::Find;
 
 our $CONTROLLERS ;
 
@@ -29,7 +28,7 @@ sub dispatcher {
                 $base_file .= '.pm';
                 
             eval "require $base" unless $INC{$base_file};
-            $CONTROLLERS = [useall $base];
+            $CONTROLLERS->{$base}++;
         }
     }
     else {
@@ -61,6 +60,14 @@ sub dispatcher {
         
         # build the return code (+chain if specified)
         $code = sub {
+            
+            my  $class_file = $class;
+                $class_file =~ s/::/\//gi;
+                $class_file .= '.pm';
+                
+            eval "require $class" unless $INC{$class_file};
+            $CONTROLLERS->{$class_file}++;
+            
             debug lc "dispatching $class -> $action";
             $class->$action(@_) if $class && $action;
         };
@@ -97,16 +104,18 @@ sub auto_dispatcher {
     
     our $cfg = config->{plugins}->{Dispatcher};
     foreach my $route (@{$cfg->{routes}}) {
-        my $re = qr/([a-z]+) *([^\s>]+) *> *(.*)/;
+        my $re = qr/([a-z,]+) *([^\s>]+) *> *(.*)/;
         my ($m, $r, $s) = $route =~ $re;
-        if ($m && $r && $s) {
-            my $c = dispatcher(split(/\s/, $s));
-            if ($m eq 'get') {
-                Dancer::App->current->registry->universal_add($_, $r, $c)
-                for ('get', 'head')
-            }
-            else {
-                Dancer::App->current->registry->universal_add($m, $r, $c)
+        foreach my $m (split /,/, $m) {
+            if ($m && $r && $s) {
+                my $c = dispatcher(split(/\s/, $s));
+                if ($m eq 'get') {
+                    Dancer::App->current->registry->universal_add($_, $r, $c)
+                    for ('get', 'head')
+                }
+                else {
+                    Dancer::App->current->registry->universal_add($m, $r, $c)
+                }
             }
         }
     }
@@ -128,7 +137,7 @@ Dancer::Plugin::Dispatcher - Simple yet Powerful Controller Class dispatcher for
 
 =head1 VERSION
 
-version 0.113250
+version 0.113310
 
 =head1 SYNOPSIS
 
@@ -144,7 +153,7 @@ version 0.113250
     # or alternatively, define routes in your config file
 
     use Dancer;
-    use Dancer::Plugin::Dispatcher;
+    use Dancer::Plugin::Dispatcher; # in your scripts
 
     dance;
 
@@ -178,9 +187,10 @@ For example:
       Dispatcher:
         base: MyApp::Controller
         routes:
-          - "get / > #index"
+          - "any / > #index"
           - "get /login > #login"
           - "get /dashboard > #check_session #dashboard"
+          - "get,post /form > #etc"
 
 =head1 METHODS
 
