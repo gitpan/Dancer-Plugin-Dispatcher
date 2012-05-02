@@ -3,7 +3,7 @@ NAME
     dispatcher for Dancer
 
 VERSION
-    version 0.1133101
+    version 0.12
 
 SYNOPSIS
         use Dancer;
@@ -14,8 +14,8 @@ SYNOPSIS
         get '/dashboard' => dispatch '#check_session', '#dashboard';
 
         dance;
-        
-    # or alternatively, define routes in your config file
+    
+        # or alternatively, define routes in your config file
 
         use Dancer;
         use Dancer::Plugin::Dispatcher; # in your scripts
@@ -65,14 +65,14 @@ METHODS
 
         The '#' character is used to separate the controller and action, same as
         RoR and Mojolicious, e.g. (controller#action).
-        
-    dispatch '#index'; -> Dispatches main->index or MyApp::Controller->index
+    
+        dispatch '#index'; -> Dispatches main->index or MyApp::Controller->index
         where MyApp::Controller is the value of base in your plugin configuration.
-        
-    dispatch 'event#log'; -> Dispatches main::Event->log or
+    
+        dispatch 'event#log'; -> Dispatches main::Event->log or
         MyApp::Controller::Event->log.
-        
-    dispatch 'post-event#log'; -> Dispatches main::Post::Event->log or
+    
+        dispatch 'post-event#log'; -> Dispatches main::Post::Event->log or
         MyApp::Controller::Post::Event->log.
 
         dispatch 'post_event#log'; -> Dispatches main::PostEvent->log or
@@ -88,18 +88,18 @@ METHODS
     shortcuts to the dispatch keyword:
 
         get '/secured' => dispatch '#chkdomain', '#chksession', '#secured';
-        
-    sub chkdomain {
+    
+        sub chkdomain {
             return undef if param(domain);
             return 'Chain broken, domain is missing!';
         }
-        
-    sub chksession {
+    
+        sub chksession {
             return undef if session('user');
             return redirect '/'; # maybe flash session timed-out message
         }
-        
-    sub secured {
+    
+        sub secured {
             return 'You made it, Joy';
         }
 

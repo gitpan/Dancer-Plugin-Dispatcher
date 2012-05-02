@@ -1,8 +1,11 @@
 # ABSTRACT: Simple yet Powerful Controller Class dispatcher for Dancer
 
 package Dancer::Plugin::Dispatcher;
+{
+    $Dancer::Plugin::Dispatcher::VERSION = '0.12';
+}
 
-# VERSION
+our $VERSION = '0.12';    # VERSION
 
 
 use strict;
@@ -10,82 +13,84 @@ use warnings;
 use Dancer qw/:syntax/;
 use Dancer::Plugin;
 
-our $CONTROLLERS ;
+our $CONTROLLERS;
 
 # automation ... sorta
 
 sub dispatcher {
     return unless config->{plugins};
-    
-    our $cfg   = config->{plugins}->{Dispatcher};
-    our $base  = $cfg->{base};
-    
+
+    our $cfg  = config->{plugins}->{Dispatcher};
+    our $base = $cfg->{base};
+
     # check for a base class in the configuration
     if ($base) {
         unless ($CONTROLLERS) {
-            my  $base_file = $base;
-                $base_file =~ s/::/\//gi;
-                $base_file .= '.pm';
-                
+            my $base_file = $base;
+            $base_file =~ s/::/\//gi;
+            $base_file .= '.pm';
+
             eval "require $base" unless $INC{$base_file};
             $CONTROLLERS->{$base}++;
         }
     }
     else {
-        ($base) = caller(1); $base ||= 'main';
+        ($base) = caller(1);
+        $base ||= 'main';
     }
-    
+
     sub BUILDCODE {
 
-        my $code ;
+        my $code;
 
         # define the input
         my $shortcut = shift;
-        
+
         # format the shortcut
         my ($class, $action) = split /#/, $shortcut;
         if ($class) {
+
             # run through the filters
             $class = ucfirst $class;
             $class =~ s/([a-z])\-([a-z])/$1::\u$2/gpi;
             $class =~ s/([a-z])\_([a-z])/$1\u$2/gpi;
-            
+
             # prepend base to class if applicable
             $class = join "::", $base, $class if $base;
         }
         else {
-            
+
             $class = $base if $base;
         }
-        
+
         # build the return code (+chain if specified)
         $code = sub {
-            
-            my  $class_file = $class;
-                $class_file =~ s/::/\//gi;
-                $class_file .= '.pm';
-                
+
+            my $class_file = $class;
+            $class_file =~ s/::/\//gi;
+            $class_file .= '.pm';
+
             eval "require $class" unless $INC{$class_file};
             $CONTROLLERS->{$class_file}++;
-            
+
             debug lc "dispatching $class -> $action";
             $class->$action(@_) if $class && $action;
         };
-        
+
         return $code;
-    
+
     }
-    
+
     my @codes = map { BUILDCODE($_) } @_;
     my $code = sub {
         my @args = @_;
-        my $data ;
+        my $data;
         foreach my $code (@codes) {
-            
+
             # HOW I WISH IT COULD WORK
             #-- break if content is set
             #-- last if Dancer::SharedData->response->content;
-            
+
             # HOW IT MUST WORK
             # execute code
             # break if content is returned or
@@ -93,35 +98,35 @@ sub dispatcher {
             $data = $code->(@args);
             last if $data || Dancer::SharedData->response->status =~ /^3\d\d$/;
         }
-        return $data ;
+        return $data;
     };
-    
+
     return $code;
 }
 
 sub auto_dispatcher {
     return unless config->{plugins};
-    
+
     our $cfg = config->{plugins}->{Dispatcher};
     foreach my $route (@{$cfg->{routes}}) {
         my $re = qr/([a-z,]+) *([^\s>]+) *> *(.*)/;
         my ($m, $r, $s) = $route =~ $re;
-        foreach my $m (split /,/, $m) {
-            if ($m && $r && $s) {
+        foreach my $i (split /,/, $m) {
+            if ($i && $r && $s) {
                 my $c = dispatcher(split(/[\s,]/, $s));
-                if ($m eq 'get') {
+                if ($i eq 'get') {
                     Dancer::App->current->registry->universal_add($_, $r, $c)
-                    for ('get', 'head')
+                      for ('get', 'head');
                 }
                 else {
-                    Dancer::App->current->registry->universal_add($m, $r, $c)
+                    Dancer::App->current->registry->universal_add($i, $r, $c);
                 }
             }
         }
     }
 }
 
-register dispatch       => sub { dispatcher @_ };
+register dispatch => sub { dispatcher @_ };
 
 register_plugin;
 auto_dispatcher;
@@ -129,6 +134,7 @@ auto_dispatcher;
 1;
 
 __END__
+
 =pod
 
 =head1 NAME
@@ -137,7 +143,7 @@ Dancer::Plugin::Dispatcher - Simple yet Powerful Controller Class dispatcher for
 
 =head1 VERSION
 
-version 0.1133101
+version 0.12
 
 =head1 SYNOPSIS
 

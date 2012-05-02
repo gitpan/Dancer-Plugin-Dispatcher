@@ -1,9 +1,10 @@
+CHANGES
 LICENSE
 MANIFEST
 META.yml
 Makefile.PL
 README
-dist.ini
+README.mkdn
 lib/Dancer/Plugin/Dispatcher.pm
 t/01-load.t
 t/02-test.t
