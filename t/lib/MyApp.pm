@@ -3,36 +3,14 @@ package MyApp;
 use Dancer ':syntax';
 use Dancer::Plugin::Dispatcher;
 
-set plugins => {Dispatcher => {base => 'MyApp'}};
+get '/auth' => dispatch '#auth';
 
-sub index {
-    'Hello World';
+sub new {
+    bless {}, shift;
 }
 
-sub setup {
-    var 'chainsaw' => 1;
-    return undef;    # pass down the chain
-}
-
-sub switch {
-    redirect '/index';
-}
-
-get '/index'          => dispatch '#index';
-get '/download/:file' => dispatch 'resource#dlfile';
-get '/chainsaw'       => dispatch '#setup', 'resource#chainsaw';
-get '/redirect'       => dispatch '#switch', 'resource#dlfile';
-
-package MyApp::Resource;
-
-use Dancer ':syntax';
-
-sub dlfile {
-    'File Downloaded';
-}
-
-sub chainsaw {
-    'Got Chainsaw' if vars->{chainsaw};
+sub auth {
+    return; # pass-thru
 }
 
 1;

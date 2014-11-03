@@ -1,21 +1,27 @@
 ---
-abstract: 'Simple yet Powerful Controller Class dispatcher for Dancer'
+abstract: 'Controller Class Dispatching System for Dancer'
 author:
-  - 'Al Newkirk <awncorp@cpan.org>'
+  - 'Al Newkirk <anewkirk@ana.io>'
+  - 'Naveed Massjouni <naveed@vt.edu>'
 build_requires: {}
 configure_requires:
-  ExtUtils::MakeMaker: 6.30
+  ExtUtils::MakeMaker: 0
 dynamic_config: 0
-generated_by: 'Dist::Zilla version 4.300010, CPAN::Meta::Converter version 2.120630'
+generated_by: 'Dist::Zilla version 5.021, CPAN::Meta::Converter version 2.142690'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
   version: 1.4
 name: Dancer-Plugin-Dispatcher
 requires:
+  Beam::Wire: 0
   Dancer: 0
 resources:
-  bugtracker: http://rt.cpan.org/NoAuth/Bugs.html?Dist=Dancer-Plugin-Dispatcher
-  homepage: http://ana.io/
-  repository: http://github.com/alnewkirk/Dancer-Plugin-Dispatcher.git
-version: 0.12
+  bugtracker: https://github.com/alnewkirk/Dancer-Plugin-Dispatcher/issues
+  homepage: https://github.com/alnewkirk/Dancer-Plugin-Dispatcher
+  repository: git://github.com/alnewkirk/Dancer-Plugin-Dispatcher.git
+version: 0.13
+x_authority: cpan:AWNCORP
+x_contributors:
+  - 'Al Newkirk <we@ana.im>'
+  - 'David Zurborg <zurborg@cpan.org>'

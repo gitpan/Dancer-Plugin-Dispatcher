@@ -1,267 +1,247 @@
-# ABSTRACT: Simple yet Powerful Controller Class dispatcher for Dancer
-
+# ABSTRACT: Controller Class Dispatching System for Dancer
 package Dancer::Plugin::Dispatcher;
-{
-    $Dancer::Plugin::Dispatcher::VERSION = '0.12';
-}
 
-our $VERSION = '0.12';    # VERSION
-
-
-use strict;
-use warnings;
-use Dancer qw/:syntax/;
+use Beam::Wire;
 use Dancer::Plugin;
 
-our $CONTROLLERS;
+use Dancer ':syntax';
 
-# automation ... sorta
+our $VERSION = '0.13'; # VERSION
 
-sub dispatcher {
-    return unless config->{plugins};
+my %handlers;
+my %services;
 
-    our $cfg  = config->{plugins}->{Dispatcher};
-    our $base = $cfg->{base};
+register dispatch => sub {
+    my $config = plugin_setting;
+    my ($self, @directions) = plugin_args(@_);
 
-    # check for a base class in the configuration
-    if ($base) {
-        unless ($CONTROLLERS) {
-            my $base_file = $base;
-            $base_file =~ s/::/\//gi;
-            $base_file .= '.pm';
+    my $caller    = caller(0) // 'main';
+    my $container = Beam::Wire->new(config => $config->{services} // {});
+    my $prefix    = $config->{prefix} // '';
+    my $suffix    = $config->{suffix} // '';
+    my $handlers  = [];
 
-            eval "require $base" unless $INC{$base_file};
-            $CONTROLLERS->{$base}++;
-        }
-    }
-    else {
-        ($base) = caller(1);
-        $base ||= 'main';
-    }
+    for my $direction (@directions) {
+        next if $handlers{$caller}{$direction};
 
-    sub BUILDCODE {
+        my ($service, $method) = split /#/, $direction;
 
-        my $code;
+        my $object = bless {}, $caller;
+        $object = $services{$service} //= $container->get($service) if $service;
+        $method = join '', $prefix, $method, $suffix;
 
-        # define the input
-        my $shortcut = shift;
+        my $class = ref $object;
+        my $code  = $object->can($method)
+            or die "Class ($class) doesn't have method ($method)";
 
-        # format the shortcut
-        my ($class, $action) = split /#/, $shortcut;
-        if ($class) {
-
-            # run through the filters
-            $class = ucfirst $class;
-            $class =~ s/([a-z])\-([a-z])/$1::\u$2/gpi;
-            $class =~ s/([a-z])\_([a-z])/$1\u$2/gpi;
-
-            # prepend base to class if applicable
-            $class = join "::", $base, $class if $base;
-        }
-        else {
-
-            $class = $base if $base;
-        }
-
-        # build the return code (+chain if specified)
-        $code = sub {
-
-            my $class_file = $class;
-            $class_file =~ s/::/\//gi;
-            $class_file .= '.pm';
-
-            eval "require $class" unless $INC{$class_file};
-            $CONTROLLERS->{$class_file}++;
-
-            debug lc "dispatching $class -> $action";
-            $class->$action(@_) if $class && $action;
+        $handlers{$caller}{$direction} = {
+            class   => $class,
+            service => $service,
+            object  => $object,
+            method  => $method,
+            code    => $code,
         };
-
-        return $code;
-
     }
 
-    my @codes = map { BUILDCODE($_) } @_;
-    my $code = sub {
-        my @args = @_;
-        my $data;
-        foreach my $code (@codes) {
+    return sub {
+        my $data; my @args = @_;
+        for my $direction (@directions) {
+            my $handler = $handlers{$caller}{$direction};
+            my $class   = $handler->{class};
+            my $service = $handler->{service};
+            my $method  = $handler->{method};
+            my $code    = $handler->{code};
 
-            # HOW I WISH IT COULD WORK
-            #-- break if content is set
-            #-- last if Dancer::SharedData->response->content;
+            debug "Dispatching to class ($class) and method ($method)"
+                . $service ? " using service ($service)" : "";
 
-            # HOW IT MUST WORK
-            # execute code
-            # break if content is returned or
-            # if redirect was issued
             $data = $code->(@args);
-            last if $data || Dancer::SharedData->response->status =~ /^3\d\d$/;
-        }
-        return $data;
-    };
 
-    return $code;
-}
-
-sub auto_dispatcher {
-    return unless config->{plugins};
-
-    our $cfg = config->{plugins}->{Dispatcher};
-    foreach my $route (@{$cfg->{routes}}) {
-        my $re = qr/([a-z,]+) *([^\s>]+) *> *(.*)/;
-        my ($m, $r, $s) = $route =~ $re;
-        foreach my $i (split /,/, $m) {
-            if ($i && $r && $s) {
-                my $c = dispatcher(split(/[\s,]/, $s));
-                if ($i eq 'get') {
-                    Dancer::App->current->registry->universal_add($_, $r, $c)
-                      for ('get', 'head');
-                }
-                else {
-                    Dancer::App->current->registry->universal_add($i, $r, $c);
-                }
+            # the dispatch chain will be broken and return immediately if a 3xx
+            # series redirect is issued or if execution is explicitly halted
+            if (my $response = Dancer::SharedData->response) {
+                last if $response->status =~ /^3/; # redirect
+                last if $response->halted; # halted
             }
         }
+        return $data;
     }
-}
+};
 
-register dispatch => sub { dispatcher @_ };
-
-register_plugin;
-auto_dispatcher;
-
-1;
+register_plugin for_versions => [1, 2];
 
 __END__
 
 =pod
 
+=encoding UTF-8
+
 =head1 NAME
 
-Dancer::Plugin::Dispatcher - Simple yet Powerful Controller Class dispatcher for Dancer
+Dancer::Plugin::Dispatcher - Controller Class Dispatching System for Dancer
 
 =head1 VERSION
 
-version 0.12
+version 0.13
 
 =head1 SYNOPSIS
 
     use Dancer;
     use Dancer::Plugin::Dispatcher;
 
-    get '/'          => dispatch '#index';
     get '/login'     => dispatch '#login';
     get '/dashboard' => dispatch '#check_session', '#dashboard';
 
-    dance;
-    
-    # or alternatively, define routes in your config file
+    sub login {
+        halt 'Unauthorized' unless login_okay scalar params;
+        redirect '/dashboard';
+    }
 
-    use Dancer;
-    use Dancer::Plugin::Dispatcher; # in your scripts
+    sub check_session {
+        var sessions => generate_session;
+    }
+
+    sub dashboard {
+        template 'dashboard';
+    }
 
     dance;
 
 =head1 DESCRIPTION
 
-This Dancer plugin provides a simple mechanism for dispatching code in
-controller classes which allows you to better separate and compartmentalize
-your Dancer application. This plugin is a great building block towards giving
-your Dancer application an MVC architecture.
-
-=head1 CONFIGURATION
-
-Configuration details will be optionally grabbed from your L<Dancer> config file
-although no configuration is neccessary.
-For example: 
-
-    plugins:
-      Dispatcher:
-        base: MyApp::Controller
-
-If no configuration information is given, this plugin will attempt to use the
-calling (or main) namespace to dispatch code from. If the base option is supplied
-with the configuration, this plugin will load that class and all sub classes for
-your convenience.
-
-Alternatively, you may can specify your routes and handlers in your L<Dancer>
-config file.
-
-For example: 
-
-    plugins:
-      Dispatcher:
-        base: MyApp::Controller
-        routes:
-          - "any / > #index"
-          - "get /dashboard > #check_session,#dashboard"
-          - "get,post /login > #login"
-          - "get,post /logout > #logout"
+Dancer::Plugin::Dispatcher provides a mechanism for dispatching HTTP requests to
+controller classes allowing you to better separate and compartmentalize your
+L<Dancer> application. This simple approach is a building block towards giving
+your Dancer application a more scalable MVC architecture. B<Note: This is an
+early release available for testing and feedback and as such is subject to
+change. The latest release of this distribution breaks backwards compatibility
+with version 0.12 or anything prior.> This plugin leverages dependency injection
+to load the objects that the HTTP requests will be dispatched to. The invesion
+of control container is provided by L<Beam::Wire> which supports various
+patterns for dynamically loading controllers.
 
 =head1 METHODS
 
 =head2 dispatch
 
-This method takes a shortcut and returns a coderef. The shortcut represents a
-controller and action (package and sub-routine). The coderef returned wraps that
-package and sub-routine to be executed by Dancer. The following is the shortcut
-translation map:
+This method takes a string, referred to as a dispatch string, and returns a
+coderef. The dispatch string represents a controller service and action. The
+controller service is a L<Beam::Wire> service container configuration. All
+controller services should be specified under the services property in the
+plugin configuration. The controller service action is a method on the object
+which the service loads. The following are the dispatch string semantics:
 
-    The '#' character is used to separate the controller and action, same as
-    RoR and Mojolicious, e.g. (controller#action).
-    
-    dispatch '#index'; -> Dispatches main->index or MyApp::Controller->index
-    where MyApp::Controller is the value of base in your plugin configuration.
-    
-    dispatch 'event#log'; -> Dispatches main::Event->log or
-    MyApp::Controller::Event->log.
-    
-    dispatch 'post-event#log'; -> Dispatches main::Post::Event->log or
-    MyApp::Controller::Post::Event->log.
+    plugins:
+        Dispatcher:
+            services:
+                artists:
+                    class: MyApp::Artist
 
-    dispatch 'post_event#log'; -> Dispatches main::PostEvent->log or
-    MyApp::Controller::PostEvent->log.
+    The '#' character is used to separate the controller service name and
+    action (method): e.g. (service#action).
+
+    dispatch '#index'; -> dispatches main->index or caller->index
+    where caller is the namespace of whichever package loads the plugin
+
+    dispatch 'artists#find'; # dispatches MyApp::Artist->new->find
+    dispatch 'artists#single'; # dispatches MyApp::Artist->new->single
 
 Another benefit in using this plugin is a better method of chaining actions.
 The current method of chaining suggests that you create a catch-all* route
-which you then you to perform some actions then pass the request to the next
+which you then use to perform some actions then pass the request to the next
 matching route forcing you to use mega-splat and re-parse routes to find the
 next match.
 
-Chaining actions with this plugin only requires you to supply multiple shortcuts
-to the dispatch keyword:
+Chaining actions with this plugin only requires you to supply multiple dispatch
+strings to the dispatch keyword:
 
-    get '/secured' => dispatch '#chkdomain', '#chksession', '#secured';
-    
-    sub chkdomain {
-        return undef if param(domain);
-        return 'Chain broken, domain is missing!';
-    }
-    
+    get '/secured' => dispatch '#check_session', '#secured';
+
     sub chksession {
-        return undef if session('user');
-        return redirect '/'; # maybe flash session timed-out message
+        return redirect '/' unless session 'user';
     }
-    
+
     sub secured {
-        return 'You made it, Joy';
+        template 'secured';
     }
 
 If it isn't obvious, when chaining, the dispatch keyword takes multiple
-shortcuts and returns a coderef that will execute them sequentially. The first
-action to return content or issue a 3xx series redirect will break the chain.
+dispatch strings and returns a coderef that will execute them sequentially. The
+first action to explicitly halt execution, by calling Dancer's halt keyword, or
+issue a 3xx series redirect will break the dispatch chain.
 
-=head1 AUTHOR
+=head1 CONFIGURATION
 
-Al Newkirk <awncorp@cpan.org>
+Configuration details will be optionally grabbed from your L<Dancer> config file
+although no configuration is neccessary. For example:
+
+    plugins:
+      Dispatcher:
+        services:
+            artists:
+                class: MyApp::Artist
+            albums:
+                class: MyApp::Album
+            songs:
+                class: MyApp::Song
+
+If no configuration information is given, this plugin will attempt to use the
+calling (or main) namespace as the controller where requests will be dispatched.
+Controller methods can have a prefix and/or a suffix automatically applied
+before dispatch. For example:
+
+    plugins:
+        Dispatcher:
+            prefix: do_
+            suffix: _action
+            services:
+                artists:
+                    class: MyApp::Artist
+                albums:
+                    class: MyApp::Album
+                songs:
+                    class: MyApp::Song
+
+The prefix and suffix values are optional and will be applied be resolving the
+controller dispatch chain.
+
+    get '/' => dispatch '#index'; # will execute do_index_action
+
+=head1 AUTHORS
+
+=over 4
+
+=item *
+
+Al Newkirk <anewkirk@ana.io>
+
+=item *
+
+Naveed Massjouni <naveed@vt.edu>
+
+=back
+
+=head1 CONTRIBUTORS
+
+=for stopwords Al Newkirk David Zurborg
+
+=over 4
+
+=item *
+
+Al Newkirk <we@ana.im>
+
+=item *
+
+David Zurborg <zurborg@cpan.org>
+
+=back
 
 =head1 COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2010 by awncorp.
+This software is copyright (c) 2014 by Al Newkirk.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
 
 =cut
-
